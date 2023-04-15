@@ -1,7 +1,6 @@
 source("renv/activate.R")
 
-if(interactive()){
- library(devtools)
+if (interactive()) {
+  library(devtools)
   library(gert)
 }
-
