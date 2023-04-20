@@ -6,15 +6,17 @@
 # " @export
 # "
 # " @examples
-get_ons_taxonomy <- function(base_url = apis$ons.main) {
+get_ons_taxonomy <- function(base_url = apis$ons$url$main) {
 
   req <- httr2::request(base_url) %>%
     httr2::req_url_path_append('taxonomy') %>%
     httr2::req_url_query(uri = '/', depth = 5)
 
   resp <- get_api_response_parsed(req)
+}
 
-  ons_taxonomy_all <- resp %>%
+convert_ons_taxonomy <- function(ons_taxonomy_all){
+  ons_taxonomy_all <- ons_taxonomy_all %>%
     tibblify::unnest_tree(id_col = uri,
                           child_col = children) %>%
     dplyr::rename(parent.uri = parent) %>%
@@ -56,8 +58,7 @@ list_ons_product_pages <- function(base_url = apis$ons$url$main) {
   ons_taxonomy <- get_ons_taxonomy(base_url)
 
   ons_product_pages <- ons_taxonomy %>%
-    dplyr::filter(type == "product_page") %>%
-    dplyr::mutate(req = httr2::req_url_query(uri = '/', depth = 5))
+    dplyr::filter(type == "product_page")
 
   return(ons_product_pages)
 }
@@ -71,19 +72,24 @@ list_ons_product_pages <- function(base_url = apis$ons$url$main) {
 # "
 # " @examples
 
-list_ons_datasets <- function(base_url = apis$ons.main){
+list_ons_datasets <- function(base_url = apis$ons$url$main){
 
   prod_pages <- list_ons_product_pages()
 
-  prod_pages$req <- httr2::request(base_url) %>%
-    httr2::req_url_path_append('data') %>%
-    httr2::req_url_query(uri = uri)
-
+  prod_pages$req <- purrr::map2(.x = rep(base_url,length(prod_pages$uri)),
+                                .y = prod_pages$uri,
+                                .f = get_ons_page_data)
+  return(prod_pages)
 }
 
-get_ons_page_data <- function(){
+get_ons_page_data <- function(base_url, page_uri){
+  req <- httr2::request(base_url) %>%
+    httr2::req_url_path_append('resolveDatasets') %>%
+    httr2::req_url_query(uri = page_uri) %>%
+    httr2::req_perform() %>%
+    httr2::resp_body_json(simplyDataFrame = TRUE)
 
-
+  return(req)
 }
 
 # " Generate ONS taxonomy sitemap
@@ -95,26 +101,27 @@ get_ons_page_data <- function(){
 # "
 # " @examples
 
-
-build_ons_api_url <- function(base_url = apis$ons.main, endpoint, uri = "/", query = NULL){
-
-  my_uri <- uri
-  my_query <- query
-  rm(uri, query)
-
-  url <- httr::parse_url(base_url)
-  url$path <- endpoint
-  url$query <- list(uri = my_uri, query = my_query)
-
-  url_built <- httr::build_url(url)
-
-  return(url_built)
-}
-
-get_api_response_parsed<- function(req) {
+get_api_response_parsed <- function(req) {
   resp <- req %>%
     httr2::req_perform() %>%
-    httr2::resp_body_json(simplifyDataFrame = TRUE)
+    httr2::resp_body_json(simplifyDataFrame = FALSE)
 
   return(resp)
+}
+
+get_ons_ds_and_ts_uris <- function() {
+  req <- httr2::request(apis$ons$url$main) %>%
+    httr2::req_url_path_append('publishedIndex')
+
+  resp <- req_perform(req) %>%
+    resp_body_json()
+
+  index <- resp$items %>%
+    purrr::transpose() %>%
+    tibble::as.tibble()
+
+  datasets <- index %>%
+    dplyr::filter(grepl('/datasets/', uri))
+
+  return(out)
 }
