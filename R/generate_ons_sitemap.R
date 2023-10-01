@@ -1,11 +1,11 @@
-# " Generate ONS taxonomy sitemap
-# "
-# " @param base_url
-# "
-# " @return
-# " @export
-# "
-# " @examples
+#' Generate ONS taxonomy sitemap
+#'
+#' @param base_url
+#'
+#' @return
+#' @export
+#'
+#' @examples
 get_ons_taxonomy <- function(base_url = apis$ons$url$main) {
   req <- httr2::request(base_url) %>%
     httr2::req_url_path_append("taxonomy") %>%
