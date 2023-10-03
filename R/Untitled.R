@@ -6,9 +6,8 @@ get_ons_timeseries <- function(cdid ){
  ts <- as.list(cdid) %>%
    purrr::transpose()
 
- ts <- ts %>%
-   map(req = httr2::)
+# ts <- ts %>%
+ #  map(req = httr2::)
 
 
 }
-
